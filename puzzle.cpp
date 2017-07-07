@@ -1,5 +1,10 @@
+#include <QtCore>
+#include <QApplication>
+#include <QWidget>
+
 #include <bits/stdc++.h>
 #include "pieces.h"
+#include "HexDisplay.h"
 
 using namespace std;
 
@@ -278,6 +283,7 @@ bool forcedHexes(uint64_t &grid, bitset<10> usedPieces) {
 }
 
 int tries;
+vector<uint64_t> states;
 
 bool search(uint64_t gridBits, bitset<10> usedPieces) {
 	// for each empty position on the grid (ignoring the filled edge hexes):
@@ -314,6 +320,7 @@ bool search(uint64_t gridBits, bitset<10> usedPieces) {
 							while (forcedHexes(newGridBits, remainingPieces));
 							*/
 							//printBits(newGridBits);
+							states.push_back(newGridBits);
 
 							if (!canCoverHexes_bits(remainingPieces, newGridBits)) {
 								continue;
@@ -338,7 +345,7 @@ bool search(uint64_t gridBits, bitset<10> usedPieces) {
 	return false;
 }
 
-int main() {
+int main(int argc, char ** argv) {
 
 	// precompute mapping of {x,y} coordinates to bit indices
 	unsigned index = 0;
@@ -384,4 +391,16 @@ int main() {
 	search(0, noPieces);
 
 	cout << tries << endl;
+
+	cout << "Qt version: " << qVersion() << endl;
+
+	QApplication app(argc, argv);
+
+    HexDisplay window(states);
+
+    window.resize(250, 150);
+    window.setWindowTitle("Hex Puzzle Solver");
+    window.show();
+
+    return app.exec();
 }
