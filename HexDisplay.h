@@ -13,8 +13,10 @@ class HexDisplay : public QWidget {
   private:
   	unsigned stateIndex;
   	std::vector<uint64_t> gameStates;
-  	
-  	void tick();
+
+    void prev();
+    void next();
+
   	void drawState(QPainter &painter, uint64_t state);
-    void drawHex(QPainter &painter, QPointF &center, float scale);
+    void drawHex(QPainter &painter);
 };
