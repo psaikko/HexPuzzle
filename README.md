@@ -12,6 +12,6 @@ make
 TODOs
 ---
 - User-definable piece shapes
-- Support for to larger grids
+- Support for larger grids
 
 ![screenshot](https://raw.githubusercontent.com/psaikko/HexPuzzle/master/Screenshot.png)
