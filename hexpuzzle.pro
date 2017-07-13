@@ -7,8 +7,8 @@ TARGET = hexpuzzle
 INCLUDEPATH += .
 
 # Input
-HEADERS += pieces.h HexDisplay.h
-SOURCES += puzzle.cpp HexDisplay.cpp
+HEADERS += pieces.h HexDisplay.h SolutionWindow.h
+SOURCES += puzzle.cpp HexDisplay.cpp SolutionWindow.cpp
 
 CONFIG += c++11
 QT += widgets

@@ -4,7 +4,7 @@
 
 #include <bits/stdc++.h>
 #include "pieces.h"
-#include "HexDisplay.h"
+#include "SolutionWindow.h"
 
 using namespace std;
 
@@ -396,7 +396,7 @@ int main(int argc, char ** argv) {
 
 	QApplication app(argc, argv);
 
-    HexDisplay window(states);
+    SolutionWindow window(states);
 
     window.resize(250, 150);
     window.setWindowTitle("Hex Puzzle Solver");
