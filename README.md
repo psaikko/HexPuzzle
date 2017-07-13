@@ -12,4 +12,4 @@ make
 TODOs
 ---
 - User-definable piece shapes
-- Support for to larger grids
+- Support for larger grids
