@@ -2,6 +2,7 @@
 #include <QPen>
 #include <QPushButton>
 #include <QVBoxLayout>
+#include <QHBoxLayout>
 #include "SolutionWindow.h"
 #include "HexDisplay.h"
 #include <bits/stdc++.h>
@@ -28,9 +29,14 @@ SolutionWindow::SolutionWindow(vector<uint64_t> &states, QWidget *parent)
 
   QVBoxLayout *vbox = new QVBoxLayout(this);
 
+  QHBoxLayout *btnbox = new QHBoxLayout(this);
+
   vbox->setSpacing(1);
+  btnbox->setSpacing(1);
+
+  btnbox->addWidget(next);
+  btnbox->addWidget(prev);
 
   vbox->addWidget(grid);
-  vbox->addWidget(next);
-  vbox->addWidget(prev);
+  vbox->addLayout(btnbox);
 }

@@ -3,7 +3,7 @@
 #include <QWidget>
 
 #include <bits/stdc++.h>
-#include "pieces.h"
+#include "Pieces.h"
 #include "SolutionWindow.h"
 
 using namespace std;
@@ -320,18 +320,15 @@ bool search(uint64_t gridBits, bitset<10> usedPieces) {
 							while (forcedHexes(newGridBits, remainingPieces));
 							*/
 							//printBits(newGridBits);
-							states.push_back(newGridBits);
 
 							if (!canCoverHexes_bits(remainingPieces, newGridBits)) {
 								continue;
 							}
 
-							// all pieces placed?
-							if (remainingPieces.count() == 10) {
-								return true;
-							}
+							if (remainingPieces.count() == 10 || 
+								search(newGridBits, remainingPieces)) {
 
-							if (search(newGridBits, remainingPieces)) {
+								states.push_back(newGridBits);
 								printBits(newGridBits ^ gridBits);
 								return true;
 							}
@@ -388,17 +385,21 @@ int main(int argc, char ** argv) {
 	cout << count << endl;
 
 	bitset<10> noPieces(0);
+
 	search(0, noPieces);
+	states.push_back(0);
+
+	reverse(states.begin(), states.end()); 
 
 	cout << tries << endl;
 
 	cout << "Qt version: " << qVersion() << endl;
 
-	QApplication app(argc, argv);
+	QApplication app(argc, argv);	
 
     SolutionWindow window(states);
 
-    window.resize(250, 150);
+    window.resize(500, 520);
     window.setWindowTitle("Hex Puzzle Solver");
     window.show();
 

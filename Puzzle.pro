@@ -3,12 +3,12 @@
 ######################################################################
 
 TEMPLATE = app
-TARGET = hexpuzzle
+TARGET = Puzzle
 INCLUDEPATH += .
 
 # Input
-HEADERS += pieces.h HexDisplay.h SolutionWindow.h
-SOURCES += puzzle.cpp HexDisplay.cpp SolutionWindow.cpp
+HEADERS += Pieces.h HexDisplay.h SolutionWindow.h
+SOURCES += Puzzle.cpp HexDisplay.cpp SolutionWindow.cpp
 
 CONFIG += c++11
 QT += widgets
