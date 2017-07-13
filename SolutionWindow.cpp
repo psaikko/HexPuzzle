@@ -29,7 +29,7 @@ SolutionWindow::SolutionWindow(vector<uint64_t> &states, QWidget *parent)
 
   QVBoxLayout *vbox = new QVBoxLayout(this);
 
-  QHBoxLayout *btnbox = new QHBoxLayout(this);
+  QHBoxLayout *btnbox = new QHBoxLayout();
 
   vbox->setSpacing(1);
   btnbox->setSpacing(1);
