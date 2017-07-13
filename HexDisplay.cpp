@@ -22,7 +22,7 @@ void HexDisplay::paintEvent(QPaintEvent *e) {
 
   QPainter painter(this);
   
-  drawState(painter, gameStates[stateIndex]);
+  drawState(painter);
 }
 
 void HexDisplay::prev() {
@@ -37,37 +37,64 @@ void HexDisplay::next() {
   update();
 }
 
-void HexDisplay::drawState(QPainter &painter, uint64_t state) {
+void HexDisplay::drawState(QPainter &painter) {
+
+  // colors from http://colorbrewer2.org
+  static const string colors[10] {
+    "#8dd3c7",
+    "#ffffb3",
+    "#bebada",
+    "#fb8072",
+    "#80b1d3",
+    "#fdb462",
+    "#b3de69",
+    "#fccde5",
+    "#d9d9d9",
+    "#bc80bd"
+  };
 
   painter.setRenderHint(QPainter::Antialiasing, true);
   QPen pen(QColor("#7f7f7f"));
   pen.setWidth(0);
   painter.setPen(pen);
 
-  uint64_t i = 1;
+  // draw "empty" filled grid piece with white for background
+  drawPiece(painter, 0x1FFFFFFFFFFFFFFF, "#FFFFFF");
 
+  // draw each piece placed up to stateIndex
+  for (unsigned i = 0; i < stateIndex; ++i) {
+    // xor with next state to get only the placed piece
+    uint64_t piece = gameStates[i] ^ gameStates[i + 1];
+    drawPiece(painter, piece, colors[i]);
+  }
+}
+
+void HexDisplay::drawPiece(QPainter &painter, uint64_t piece, const string color) {
+
+  // scale to fit the widget's size
   float scale = min(width() / double(((2 * GRID_SIZE - 1) * SQRT3)), height() / double((2 * GRID_SIZE + (GRID_SIZE - 1))));
 
+  uint64_t i = 1;
+  // loop over hex grid indices (x,y) and bit indices (i)
   for (int y = 1; y < 2*GRID_SIZE; ++y) {
     for (int x = max(1, y - (GRID_SIZE - 1)); 
        x < min(2*GRID_SIZE, y + GRID_SIZE);
-       x++) 
+       x++, i <<= 1) 
     {
-      painter.resetTransform();
+      // if piece is filled
+      if (piece & i) {
+        painter.resetTransform();
 
-      QPointF center(SQRT3 * x - SQRT3 /2*(y-4), 1.5 * y - 0.5);
+        // compute center of hex
+        QPointF center(SQRT3 * x - SQRT3 /2*(y-4), 1.5 * y - 0.5);
+        // set transformation
+        painter.scale(scale, scale);
+        painter.translate(center);
+        // set color
+        painter.setBrush(QBrush(color.c_str()));
 
-      painter.scale(scale, scale);
-      painter.translate(center);
-
-      if (state & i)
-        painter.setBrush(QBrush("#000000"));
-      else 
-        painter.setBrush(QBrush("#FFFFFF"));
-
-      drawHex(painter);
-
-      i <<= 1;
+        drawHex(painter);
+      }
     }
   }
 }

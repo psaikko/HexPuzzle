@@ -12,5 +12,4 @@ make
 TODOs
 ---
 - User-definable piece shapes
-- Show filled piece shapes in UI
 - Support for to larger grids
