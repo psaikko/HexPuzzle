@@ -1,9 +1,12 @@
+#pragma once
 #include <bits/stdc++.h>
 
 using namespace std;
 
+// piece array size
 #define M 6
-#define Piece array<array<int, M>, M>
+
+typedef array<array<int, M>, M> Piece;
 
 // puzzle piece shapes
 

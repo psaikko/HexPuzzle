@@ -8,16 +8,15 @@
 
 using namespace std;
 
-#define N 11
-
-#define Point pair<int,int>
+// {x, y} coordinate pairs
+typedef pair<int,int> Point;
 #define X first
 #define Y second
 
+// length of one side of hex grid
 #define GRID_SIZE 5
 
-vector< vector< vector< uint64_t > > > pieceOrientationBits;
-
+// hash function for points
 namespace std
 {
     template<> struct hash<Point>
@@ -26,14 +25,23 @@ namespace std
         typedef std::size_t result_type;
         result_type operator()(argument_type const& p) const
         {
-            return (N+1)*p.X + p.Y;
+            return (2*GRID_SIZE - 1)*p.X + p.Y;
         }
     };
 }
 
+// Grid contains 61 hexes, so a state can be represented as
+// a 64-bit integer
+typedef uint64_t GridBits;
+
+// precomputed "piece x orientation x point" bitmasks
+vector< vector< vector< GridBits > > > pieceOrientationBits;
+
+// precomputed mapping of coordinate pairs to bit-indices
 unordered_map<Point, unsigned> pointToIndex;
 unordered_map<unsigned, Point> indexToPoint;
 
+// direction functions on hex grid coordinate pairs
 Point L(Point p)  { return {p.X - 1, p.Y}; }
 Point R(Point p)  { return {p.X + 1, p.Y}; }
 Point UL(Point p) { return {p.X - 1, p.Y - 1}; }
@@ -100,16 +108,17 @@ vector<Rot> allOrientations = {
 	flip(turn(turn(turn(turn(turn(base))))))
 };
 
-bool bitsHasHex(uint64_t bits, Point p) {
+// check / set if a bit is filled at a coordinate
+bool bitsHasHex(GridBits bits, Point p) {
 	return bits & (1ul << pointToIndex[p]);
 }
 
-uint64_t bitsSetHex(uint64_t bits, Point p) {
+GridBits bitsSetHex(GridBits bits, Point p) {
 	return bits | (1ul << pointToIndex[p]);
 }
 
-void printBits(uint64_t bits) {
-	uint64_t i = 1;
+void printBits(GridBits bits) {
+	GridBits i = 1;
 	for (int y = 1; y < 2*GRID_SIZE; ++y) {
 		for (int j = 0; j < y - GRID_SIZE; ++j)
 			cout << " ";
@@ -139,16 +148,18 @@ bool onGrid(Point p) {
 	return pointToIndex.count(p);
 }
 
-// place piece on grid (does not check validity)
-uint64_t makePieceOrientationMask(Piece piece, Rot o, Point p) {
+// place piece on empty grid
+GridBits makePieceOrientationMask(Piece piece, Rot o, Point p) {
 
-	uint64_t newGrid = 0;
+	GridBits newGrid = 0;
 
 	deque<Point> piecePtQ;
 	deque<Point> gridPtQ;
 
+	// set first hex on grid (always valid)
 	newGrid = bitsSetHex(newGrid, p);
 
+	// convention: all piece grids are filled at {1, 4}
 	piecePtQ.push_back({1,4});
 	gridPtQ.push_back(p);
 
@@ -160,11 +171,13 @@ uint64_t makePieceOrientationMask(Piece piece, Rot o, Point p) {
 
 	// do bfs to place piece on grid
 	while (piecePtQ.size()) {
+		// take previously placed piece from stack
 		Point piecePt = piecePtQ.front();
 		Point gridPt = gridPtQ.front();
 
 		piecePtQ.pop_front(); gridPtQ.pop_front();
 
+		// check adjacent hexes
 		for (unsigned i = 0; i < directions.size(); ++i) {
 			auto pieceDir = pieceDirections[i];
 			auto gridDir  = directions[i];
@@ -172,14 +185,19 @@ uint64_t makePieceOrientationMask(Piece piece, Rot o, Point p) {
 			Point newGridPt = gridDir(gridPt);
 			Point newPiecePt = pieceDir(piecePt);
 
+			// does the piece extend here?
 			if (!onPieceGrid(newPiecePt)) continue;
 			if (!piece[newPiecePt.Y][newPiecePt.X]) continue;
+
+			// can the hex be placed on the grid?
 			if (!onGrid(newGridPt)) return 0;
 			if (bitsHasHex(newGrid, newGridPt)) continue;
 
+			// push the piece to the stack
 			piecePtQ.push_back(newPiecePt);
 			gridPtQ.push_back(newGridPt);
 
+			// update resulting grid
 			newGrid = bitsSetHex(newGrid, newGridPt);
 		}
 	}
@@ -188,30 +206,32 @@ uint64_t makePieceOrientationMask(Piece piece, Rot o, Point p) {
 }
 
 
-bool canCoverHexes_bits(bitset<10> usedPieces, uint64_t grid) {
-	uint64_t scratch = grid;
+bool canCoverHexes(bitset<10> usedPieces, GridBits grid) {
+	GridBits scratch = grid;
 
+	// for each unused piece 
 	for (unsigned i = 0; i < allPieces.size(); ++i) {
 		if (usedPieces[i]) continue;
 
 		bool canPlace = false;
 
+		// try to place the piece in any hex, in any valid orientation
 		for (unsigned j = 0; j < allOrientations.size(); ++j) {
-
-			for (uint64_t pieceBits : pieceOrientationBits[i][j]) {
+			for (GridBits pieceBits : pieceOrientationBits[i][j]) {
 
 				if ((pieceBits & grid) == 0) {
+					// keep track of hexes that can be covered in some way
 					scratch |= pieceBits;
 					canPlace = true;
 				}
 			}
 		}
 
+		// if piece can't be placed anywhere, fail
 		if (!canPlace) return false;
 	}
 
-
-	// does scratch grid have uncovered hexes?
+	// are there hexes that could not be covered by any piece?
 	if (bitset<61>(scratch).count() != 61) {
 		return false;
 	}
@@ -219,120 +239,52 @@ bool canCoverHexes_bits(bitset<10> usedPieces, uint64_t grid) {
 	return true;
 }
 
-bool forcedHexes(uint64_t &grid, bitset<10> usedPieces) {
-	// find hexes that can only be covered by one piece in one orientation
+bool search(GridBits gridBits, bitset<10> &usedPieces, vector<GridBits>& solution) {
 
-	vector<uint64_t> pieceCoverage;
+	// for each position on the grid, starting from top left
+	for (GridBits m = 1; m < (GridBits(1) << 62); m <<= 1) {
 
-	for (unsigned i = 0; i < allPieces.size(); ++i) {
-		if (usedPieces[i]) {
-			pieceCoverage.push_back(0);
-			continue;
-		}
-
-		uint64_t coverage = 0;
-
-		for (unsigned j = 0; j < allOrientations.size(); ++j) {
-
-			for (uint64_t pieceBits : pieceOrientationBits[i][j]) {
-
-				if ((pieceBits & grid) == 0) {
-					coverage |= pieceBits;
-				}
-			}
-		}
-
-		pieceCoverage.push_back(coverage);
-	}
-
-	for (unsigned i = 0; i < pieceCoverage.size(); ++i) {
-		uint64_t coverage = pieceCoverage[i];
-		uint64_t otherCoverage = 0;
-		for (unsigned j = 0; j < pieceCoverage.size(); ++j) {
-			if (i != j) {
-				otherCoverage |= pieceCoverage[j];
-			}
-		}
-
-
-		uint64_t uniq = coverage & ~otherCoverage;
-
-		if (uniq) {
-			int choices = 0;
-			uint64_t foo;
-
-			for (unsigned j = 0; j < allOrientations.size(); ++j) {
-
-				for (uint64_t pieceBits : pieceOrientationBits[i][j]) {
-
-					if ((pieceBits & uniq) && !(pieceBits & grid)) {
-						foo = pieceBits;
-						++choices;
-					}
-				}
-			}
-
-			if (choices == 1) {
-				grid |= foo;
-				usedPieces[i] = 1;
-				return true;
-			}
-		}
-	}
-	return false;
-}
-
-int tries;
-vector<uint64_t> states;
-
-bool search(uint64_t gridBits, bitset<10> usedPieces) {
-	// for each empty position on the grid (ignoring the filled edge hexes):
-
-	++tries;
-
-	for (uint64_t m = 1; m < (uint64_t(1) << 62); m <<= 1) {
-
+		// if the position is empty
 		if ((gridBits & m) == 0) {
 
 			// try each piece
 			for (unsigned i = 0; i < allPieces.size(); ++i) {
+
+				// skipping used pieces
 				if (usedPieces[i]) continue;
 
 				// in each orientation
 				for (unsigned j = 0; j < allOrientations.size(); ++j) {
 
-					// if in can be placed, add resulting Grid to the stack
+					// in each location
+					for (GridBits pieceBits : pieceOrientationBits[i][j]) {
 
-					for (uint64_t pieceBits : pieceOrientationBits[i][j]) {
+						// does the piece fill the hex we want to cover next?
+						if ((pieceBits & m) == 0) 
+							continue;
 
-						if ((pieceBits & m) == 0) continue;
+						// does the piece overlap with the grid?
+						if ((gridBits & pieceBits) != 0) 
+							continue;
 
-						if ((gridBits & pieceBits) == 0) {
-							uint64_t newGridBits = gridBits | pieceBits;
+						// create an updated grid and piece bitset
+						GridBits newGridBits = gridBits | pieceBits;
+						bitset<10> remainingPieces(usedPieces);
+						remainingPieces[i] = 1;
 
-							bitset<10> remainingPieces(usedPieces);
-							remainingPieces[i] = 1;
-							/*
-							do {
-								if (!canCoverHexes_bits(remainingPieces, newGridBits)) 
-									goto skip;
-							}
-							while (forcedHexes(newGridBits, remainingPieces));
-							*/
-							//printBits(newGridBits);
+						// can each remaining hex be covered by some piece?
+						if (!canCoverHexes(remainingPieces, newGridBits))
+							continue;
 
-							if (!canCoverHexes_bits(remainingPieces, newGridBits)) {
-								continue;
-							}
+						// continue search until all pieces are placed
+						if (remainingPieces.count() == 10 || 
+							search(newGridBits, remainingPieces, solution)) {
 
-							if (remainingPieces.count() == 10 || 
-								search(newGridBits, remainingPieces)) {
-
-								states.push_back(newGridBits);
-								printBits(newGridBits ^ gridBits);
-								return true;
-							}
-						}	
+							// solution was found, add state to solution vector
+							solution.push_back(newGridBits);
+							//printBits(newGridBits ^ gridBits);
+							return true;
+						}
 					}
 				}
 			}
@@ -358,8 +310,9 @@ int main(int argc, char ** argv) {
 		}
 	}
 
-	unsigned count = 0;
-
+	// preprocess grids with each single piece
+	// in each possible orientation 
+	// in each possible location
 	for (unsigned i = 0; i < allPieces.size(); ++i) {
 		pieceOrientationBits.emplace_back();
 		for (unsigned j = 0; j < allOrientations.size(); ++j) {
@@ -372,32 +325,28 @@ int main(int argc, char ** argv) {
 
 					Point p = {x, y};
 
-					uint64_t bits = makePieceOrientationMask(allPieces[i], allOrientations[j], p);
+					GridBits bits = makePieceOrientationMask(allPieces[i], allOrientations[j], p);
 
 					if (bits) {
 						pieceOrientationBits[i][j].push_back(bits);
-						++count;						
 					}
 			 	}
 			}
 		}
 	}
-	cout << count << endl;
+
 
 	bitset<10> noPieces(0);
+	vector<GridBits> solution;
+	search(0, noPieces, solution);
 
-	search(0, noPieces);
-	states.push_back(0);
-
-	reverse(states.begin(), states.end()); 
-
-	cout << tries << endl;
-
-	cout << "Qt version: " << qVersion() << endl;
+	// Solution is reversed, add the initial empty state and reverse it
+	solution.push_back(0);
+	reverse(solution.begin(), solution.end()); 
 
 	QApplication app(argc, argv);	
 
-    SolutionWindow window(states);
+    SolutionWindow window(solution);
 
     window.resize(500, 520);
     window.setWindowTitle("Hex Puzzle Solver");
